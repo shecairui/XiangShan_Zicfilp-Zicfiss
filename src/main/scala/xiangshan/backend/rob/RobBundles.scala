@@ -135,7 +135,9 @@ object RobBundles extends HasCircularQueuePtrHelper {
     robEntry.isVset := robEnq.isVset
     robEntry.isHls := robEnq.isHls
     robEntry.instrSize := robEnq.instrSize
-    robEntry.rfWen := robEnq.rfWen
+    // Zicfiss: internal integer logical registers, such as IntSSPTmpReg,
+    // participate in rename but must not appear as architectural commit writes.
+    robEntry.rfWen := robEnq.rfWen && robEnq.ldest < 32.U
     robEntry.fpWen := robEnq.dirtyFs
     robEntry.dirtyVs := robEnq.dirtyVs
     // flushPipe needFlush but not exception

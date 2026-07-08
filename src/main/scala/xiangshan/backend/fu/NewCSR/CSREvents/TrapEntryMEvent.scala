@@ -81,12 +81,19 @@ class TrapEntryMEventModule(implicit val p: Parameters) extends Module with CSRE
     (isFetchExcp || isFetchBkpt) && fetchIsVirt ||
     (isMemExcp || isMemBkpt) && memIsVirt
   private val tvalFillInst     = isIllegalInst
+  // Zicfiss: internal Zicfiss/Zicfilp bits both report architectural software-check cause 18.
+  private val isZicfissSoftwareCheck = isException && ExceptionNO.zicfissException.U === highPrioTrapNO
+  private val isZicfilpSoftwareCheck = isException && ExceptionNO.zicfilpException.U === highPrioTrapNO
+  private val isSoftwareCheck = isZicfissSoftwareCheck || isZicfilpSoftwareCheck
+  private val softwareCheckTval = Mux(isZicfissSoftwareCheck, 3.U, 2.U)
+  private val trapExceptionCode = Mux(isZicfissSoftwareCheck, ExceptionNO.zicfilpException.U, highPrioTrapNO)
 
   private val tval = Mux1H(Seq(
     (tvalFillPc                        ) -> trapPC,
     (tvalFillPcPlus2                   ) -> (trapPC + 2.U),
     (tvalFillMemVaddr || isLSGuestExcp ) -> trapMemVA,
     (tvalFillInst                      ) -> trapInst,
+    (isSoftwareCheck                  ) -> softwareCheckTval,
   ))
 
   private val tval2 = Mux1H(Seq(
@@ -118,7 +125,7 @@ class TrapEntryMEventModule(implicit val p: Parameters) extends Module with CSRE
   out.mstatus.bits.MDT          := 1.U
   out.mepc.bits.epc             := Mux(isFetchMalAddr, in.fetchMalTval(63, 1), trapPC(63, 1))
   out.mcause.bits.Interrupt     := isInterrupt
-  out.mcause.bits.ExceptionCode := Mux(isDTExcp, ExceptionNO.EX_DT.U, highPrioTrapNO)
+  out.mcause.bits.ExceptionCode := Mux(isDTExcp, ExceptionNO.EX_DT.U, trapExceptionCode)
   out.mtval.bits.ALL            := Mux(isFetchMalAddrExcp, in.fetchMalTval, tval)
   out.mtval2.bits.ALL           := Mux(isDTExcp, precause, tval2 >> 2)
   out.mtinst.bits.ALL           := Mux(isFetchGuestExcp && in.trapIsForVSnonLeafPTE || isLSGuestExcp && in.memExceptionIsForVSnonLeafPTE, 0x3000.U, 0.U)

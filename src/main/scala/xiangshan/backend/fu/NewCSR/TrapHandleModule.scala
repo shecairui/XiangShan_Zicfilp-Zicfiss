@@ -51,10 +51,19 @@ class TrapHandleModule extends Module {
 
   private val highestPrioIR  = hasIRVec.asUInt
   private val highestPrioEX  = highestPrioEXVec.asUInt
+  // Zicfiss: internally bit 17 distinguishes shadow-stack faults,
+  // but delegation must use architectural software-check cause 18.
+  private val zicfissExceptionMask = (BigInt(1) << ExceptionNO.zicfissException).U(64.W)
+  private val softwareCheckExceptionMask = (BigInt(1) << ExceptionNO.zicfilpException).U(64.W)
+  private val highestPrioEXForDeleg = Mux(
+    highestPrioEXVec(ExceptionNO.zicfissException),
+    (highestPrioEX & ~zicfissExceptionMask) | softwareCheckExceptionMask,
+    highestPrioEX
+  )
 
-  private val mEXVec  = highestPrioEX
-  private val hsEXVec = highestPrioEX & medeleg
-  private val vsEXVec = highestPrioEX & medeleg & hedeleg
+  private val mEXVec  = highestPrioEXForDeleg
+  private val hsEXVec = highestPrioEXForDeleg & medeleg
+  private val vsEXVec = highestPrioEXForDeleg & medeleg & hedeleg
 
   // nmi handle in MMode only and default handler is mtvec
   private val  mHasIR = hasIR

@@ -417,7 +417,8 @@ object FuConfig {
     fuType = FuType.ldu,
     fuGen = null, // Todo
     srcData = Seq(
-      Seq(IntData()),
+      // Zicfiss: SSPOPCHK uses src(1) to carry the x1/x5 compare value.
+      Seq(IntData(), IntData()),
     ),
     piped = false, // Todo: check it
     writeIntRf = true,

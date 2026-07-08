@@ -91,12 +91,19 @@ class TrapEntryVSEventModule(implicit val p: Parameters) extends Module with CSR
     (isFetchExcp || isFetchBkpt) && fetchIsVirt ||
     (isMemExcp || isMemBkpt) && memIsVirt
   private val tvalFillInst     = isIllegalInst
+  // Zicfiss: internal Zicfiss/Zicfilp bits both report architectural software-check cause 18.
+  private val isZicfissSoftwareCheck = isException && zicfissException.U === highPrioTrapNO
+  private val isZicfilpSoftwareCheck = isException && zicfilpException.U === highPrioTrapNO
+  private val isSoftwareCheck = isZicfissSoftwareCheck || isZicfilpSoftwareCheck
+  private val softwareCheckTval = Mux(isZicfissSoftwareCheck, 3.U, 2.U)
+  private val trapExceptionCode = Mux(isZicfissSoftwareCheck, zicfilpException.U, highPrioTrapNO)
 
   private val tval = Mux1H(Seq(
     tvalFillPc       -> trapPC,
     tvalFillPcPlus2  -> (trapPC + 2.U),
     tvalFillMemVaddr -> trapMemVA,
     tvalFillInst     -> trapInst,
+    isSoftwareCheck -> softwareCheckTval,
   ))
 
   private val instrAddrTransType = AddrTransType(
@@ -126,7 +133,7 @@ class TrapEntryVSEventModule(implicit val p: Parameters) extends Module with CSR
   // SPVP is not PrivMode enum type, so asUInt and shrink the width
   out.vsepc.bits.epc             := Mux(isFetchMalAddr, in.fetchMalTval(63, 1), trapPC(63, 1))
   out.vscause.bits.Interrupt     := isInterrupt
-  out.vscause.bits.ExceptionCode := Mux(virtualInterruptIsHvictlInject, hvictlIID, highPrioTrapNO)
+  out.vscause.bits.ExceptionCode := Mux(virtualInterruptIsHvictlInject, hvictlIID, trapExceptionCode)
   out.vstval.bits.ALL            := Mux(isFetchMalAddrExcp, in.fetchMalTval, tval)
   out.targetPc.bits.pc           := in.pcFromXtvec
   out.targetPc.bits.raiseIPF     := instrAddrTransType.checkPageFault(in.pcFromXtvec)

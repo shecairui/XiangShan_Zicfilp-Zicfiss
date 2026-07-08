@@ -858,6 +858,8 @@ package object xiangshan {
     // def singleStep          = 14
     def storePageFault      = 15
     def doubleTrap          = 16
+    def zicfissException = 17 // software-check-exception of Zicfiss cause = 18, tval = 3
+    def zicfilpException = 18 // software-check-exception of Zicfilp cause = 18, tval = 2
     def hardwareError       = 19
     def instrGuestPageFault = 20
     def loadGuestPageFault  = 21
@@ -908,6 +910,8 @@ package object xiangshan {
       instrPageFault,
       instrGuestPageFault,
       instrAccessFault,
+      // Zicfiss: landing-pad software-check is checked before normal instruction execution.
+      zicfilpException,
       illegalInstr,
       virtualInstr,
       instrAddrMisaligned,
@@ -920,6 +924,8 @@ package object xiangshan {
       loadGuestPageFault,
       storeAccessFault,
       loadAccessFault,
+      // Zicfiss: shadow-stack software-check is lower priority than load/store/AMO access-fault.
+      zicfissException,
       hardwareError
     )
 

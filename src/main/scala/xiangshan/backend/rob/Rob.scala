@@ -975,8 +975,12 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   val enqUopNumVec = VecInit(io.enq.req.map(req => req.bits.numUops))
   val enqWBNumVec = VecInit(io.enq.req.map(req => req.bits.numWB))
 
-  private val enqWriteStdVec: Vec[Bool] = VecInit(io.enq.req.map {
-    req => FuType.isStore(req.bits.fuType)
+  private val enqWriteStdVec: Vec[Bool] = VecInit(io.enq.req.map { req =>
+    // Zicfiss: SSPUSH allocates the ROB entry with a CSR-read first uop,
+    // but the full instruction still has a store-data uop that must complete.
+    val isZicfissSplitStoreHead = req.bits.commitType === CommitType.STORE &&
+      FuType.isCsr(req.bits.fuType) && req.bits.ldest >= 32.U
+    FuType.isStore(req.bits.fuType) || isZicfissSplitStoreHead
   })
   val fflags_wb = fflagsWBs
   val vxsat_wb = vxsatWBs

@@ -305,6 +305,7 @@ class DecodeUnitComp()(implicit p : Parameters) extends XSModule with DecodeUnit
       csBundle(0).ldest := IntSSPTmpReg.U
       csBundle(0).fuType := FuType.csr.U
       csBundle(0).fuOpType := CSROpType.set
+      csBundle(0).commitType := CommitType.STORE
       csBundle(0).selImm := SelImm.IMM_Z
       csBundle(0).rfWen := true.B
       csBundle(0).fpWen := false.B
@@ -329,6 +330,7 @@ class DecodeUnitComp()(implicit p : Parameters) extends XSModule with DecodeUnit
       csBundle(1).ldest := 0.U
       csBundle(1).fuType := FuType.stu.U
       csBundle(1).fuOpType := LSUOpType.sspush
+      csBundle(1).commitType := CommitType.STORE
       csBundle(1).selImm := SelImm.IMM_S
       csBundle(1).rfWen := false.B
       csBundle(1).fpWen := false.B
@@ -352,6 +354,7 @@ class DecodeUnitComp()(implicit p : Parameters) extends XSModule with DecodeUnit
       csBundle(2).ldest := IntSSPTmpReg.U
       csBundle(2).fuType := FuType.alu.U
       csBundle(2).fuOpType := ALUOpType.add
+      csBundle(2).commitType := CommitType.NORMAL
       csBundle(2).selImm := SelImm.IMM_I
       csBundle(2).rfWen := true.B
       csBundle(2).fpWen := false.B
@@ -376,6 +379,7 @@ class DecodeUnitComp()(implicit p : Parameters) extends XSModule with DecodeUnit
       csBundle(3).ldest := 0.U
       csBundle(3).fuType := FuType.csr.U
       csBundle(3).fuOpType := CSROpType.wrt
+      csBundle(3).commitType := CommitType.NORMAL
       csBundle(3).selImm := SelImm.IMM_Z
       csBundle(3).rfWen := false.B
       csBundle(3).fpWen := false.B
