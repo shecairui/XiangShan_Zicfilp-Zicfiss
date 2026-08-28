@@ -425,6 +425,10 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   csrin.trapInstInfo := ctrlBlock.io.toCSR.trapInstInfo
   csrin.fromVecExcpMod.busy := vecExcpMod.o.status.busy
   csrin.criticalErrorState := backendCriticalError
+  // Zicfilp
+  csrin.ZicfilpELP.zip(ctrlBlock.io.toCSR.ZicfilpELP).foreach { case (sink, source) =>
+    sink := source
+  }
 
   private val csrio = intRegion.io.csrio.get
   csrio.hartId := io.fromTop.hartId

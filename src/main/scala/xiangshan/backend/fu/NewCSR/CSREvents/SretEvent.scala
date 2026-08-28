@@ -13,9 +13,9 @@ import xiangshan.AddrTransType
 
 class SretEventOutput extends Bundle with EventUpdatePrivStateOutput with EventOutputBase {
   // Todo: write sstatus instead of mstatus
-  val mstatus = ValidIO((new MstatusBundle).addInEvent(_.SIE, _.SPIE, _.SPP, _.MPRV, _.MDT, _.SDT))
+  val mstatus = ValidIO((new MstatusBundle).addInEvent(_.SIE, _.SPIE, _.SPP, _.MPRV, _.MDT, _.SDT, _.SPELP))
   val hstatus = ValidIO((new HstatusBundle).addInEvent(_.SPV))
-  val vsstatus = ValidIO((new SstatusBundle).addInEvent(_.SIE, _.SPIE, _.SPP))
+  val vsstatus = ValidIO((new SstatusBundle).addInEvent(_.SIE, _.SPIE, _.SPP, _.SPELP))
   val targetPc = ValidIO(new TargetPCBundle)
 }
 
@@ -106,6 +106,7 @@ class SretEventModule(implicit p: Parameters) extends Module with CSREventBase {
     sretInHS   -> 0.U, // sret will alway leave M mode
     (sretInM && (sretToU || sretToVS || sretToVU))    -> 0.U
   ))
+  out.mstatus.bits.SPELP      := 0.U
 
 
   // vsstatus
@@ -113,6 +114,7 @@ class SretEventModule(implicit p: Parameters) extends Module with CSREventBase {
   out.vsstatus.bits.SPP       := PrivMode.U.asUInt(0, 0) // SPP is not PrivMode enum type, so asUInt and shrink the width
   out.vsstatus.bits.SIE       := in.vsstatus.SPIE
   out.vsstatus.bits.SPIE      := 1.U
+  out.vsstatus.bits.SPELP      := 0.U
 
   outSDT.vsstatus.valid       := valid && (sretToVU || sretInVS) // clear SDT when return to VU or sret in vs
   outSDT.vsstatus.bits.SDT    := 0.U

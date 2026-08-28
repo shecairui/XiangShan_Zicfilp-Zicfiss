@@ -13,7 +13,7 @@ import xiangshan.AddrTransType
 
 class TrapEntryMEventOutput extends Bundle with EventUpdatePrivStateOutput with EventOutputBase  {
 
-  val mstatus   = ValidIO((new MstatusBundle ).addInEvent(_.MPV, _.MPP, _.GVA, _.MPIE, _.MIE, _.MDT))
+  val mstatus   = ValidIO((new MstatusBundle ).addInEvent(_.MPV, _.MPP, _.GVA, _.MPIE, _.MIE, _.MDT, _.MPELP))
   val mepc      = ValidIO((new Epc           ).addInEvent(_.epc))
   val mcause    = ValidIO((new CauseBundle   ).addInEvent(_.Interrupt, _.ExceptionCode))
   val mtval     = ValidIO((new OneFieldBundle).addInEvent(_.ALL))
@@ -131,6 +131,7 @@ class TrapEntryMEventModule(implicit val p: Parameters) extends Module with CSRE
   out.mstatus.bits.MPIE         := current.mstatus.MIE
   out.mstatus.bits.MIE          := 0.U
   out.mstatus.bits.MDT          := 1.U
+  out.mstatus.bits.MPELP        := current.ZicfilpELP.getOrElse(false.B)
   out.mepc.bits.epc             := Mux(satpFlushFirstFetchFault,
                                     trapPC(63, 1),
                                     Mux(isFetchMalAddr, in.fetchMalTval(63, 1), trapPC(63, 1)))

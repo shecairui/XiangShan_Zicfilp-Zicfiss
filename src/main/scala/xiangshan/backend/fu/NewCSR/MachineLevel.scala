@@ -341,7 +341,7 @@ trait MachineLevel { self: NewCSR =>
 
   val mseccfg = Module(new CSRModule("Mseccfg", new CSRBundle {
     val PMM   = EnvPMM(33, 32, wNoEffect).withReset(EnvPMM.Disable).withDescription("Machine security memory protection mode from the Smmpm extension.")
-    val MLPE  = RO(10).withDescription("Machine landing-pad enable from the Zicfilp extension.")
+    val MLPE  = RW(10).withReset(0.U).withDescription("Machine landing-pad enable from the Zicfilp extension.")
     val SSEED = RO( 9).withDescription("Seed CSR enable from the Zkr extension.")
     val USEED = RO( 8).withDescription("User seed CSR enable from the Zkr extension.")
     val RLB   = RO( 2).withDescription("Rule-locking bypass control from the Smepmp extension.")
@@ -569,6 +569,7 @@ class MstatusBundle extends CSRBundle {
   val TVM  = CSRRWField     (20).withReset(0.U).withDescription("Trap virtual-memory management operations in S-mode when set.")
   val TW   = CSRRWField     (21).withReset(0.U).withDescription("Trap WFI in lower privilege modes when set.")
   val TSR  = CSRRWField     (22).withReset(0.U).withDescription("Trap SRET when set.")
+  val SPELP = CSRRWField    (23).withReset(0.U).withDescription("Saved landing-pad state for S-mode trap handling.")
   val SDT  = CSRRWField     (24).withReset(0.U).withDescription("S-mode disable-trap bit used by the Ssdbltrp extension.")
   val UXL  = XLENField      (33, 32).withReset(XLENField.XLEN64).withDescription("Effective XLEN for U-mode.")
   val SXL  = XLENField      (35, 34).withReset(XLENField.XLEN64).withDescription("Effective XLEN for S-mode.")
@@ -576,6 +577,7 @@ class MstatusBundle extends CSRBundle {
   val MBE  = CSRROField     (37).withReset(0.U).withDescription("M-mode endianness selector.")
   val GVA  = CSRRWField     (38).withReset(0.U).withDescription("Indicates that trap information was derived from a guest virtual address.")
   val MPV  = VirtMode       (39).withReset(0.U).withDescription("Saved virtualization mode from before trap entry to M-mode.")
+  val MPELP = CSRRWField    (41).withReset(0.U).withDescription("Saved landing-pad state for M-mode trap handling.")
   val MDT  = CSRRWField     (42).withReset(1.U).withDescription("M-mode disable-trap bit used by the Smdbltrp extension.")
   val SD   = CSRROField     (63,
     (_, _) => FS === ContextStatus.Dirty || VS === ContextStatus.Dirty
@@ -650,7 +652,7 @@ class MstatusModule(implicit override val p: Parameters) extends CSRModule("MSta
 class MnstatusBundle extends CSRBundle {
   val NMIE   = CSRRWField  (3).withReset(0.U).withDescription("Enable non-maskable interrupt handling.")
   val MNPV   = VirtMode    (7).withReset(0.U).withDescription("Saved virtualization mode for resumable NMI handling.")
-  val MNPELP = RO          (9).withReset(0.U).withDescription("Saved landing-pad state for resumable NMI handling.")
+  val MNPELP = CSRRWField  (9).withReset(0.U).withDescription("Saved landing-pad state for resumable NMI handling.")
   val MNPP   = PrivMode    (12, 11).withReset(PrivMode.U).withDescription("Saved privilege level for resumable NMI handling.")
 }
 
@@ -761,6 +763,7 @@ class Mtval2Bundle extends FieldInitBundle(Some("Guest physical address or addit
 class MhpmcounterBundle extends FieldInitBundle(Some("Hardware performance-monitoring counter value."))
 
 class MEnvCfg extends EnvCfg {
+  this.LPE.setRW().withReset(0.U)
   if (CSRConfig.EXT_SSTC) {
     this.STCE.setRW().withReset(1.U)
   }

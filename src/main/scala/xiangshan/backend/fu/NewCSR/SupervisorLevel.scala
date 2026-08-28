@@ -232,6 +232,7 @@ class SstatusBundle extends CSRBundle {
   val XS   = ContextStatusRO(16, 15).withReset(0.U).withDescription("Additional user extension state summary.")
   val SUM  = CSRWARLField   (18, wNoFilter).withReset(0.U).withDescription("Permit S-mode data accesses to pages marked as user.")
   val MXR  = CSRWARLField   (19, wNoFilter).withReset(0.U).withDescription("Make executable pages readable when set.")
+  val SPELP = CSRRWField    (23).withReset(0.U).withDescription("Saved landing-pad state for S-mode trap handling.")
   val SDT  = CSRWARLField   (24, wNoFilter).withReset(0.U).withDescription("S-mode disable-trap bit used by the Ssdbltrp extension.")
   val UXL  = XLENField      (33, 32).withReset(XLENField.XLEN64).withDescription("Effective XLEN for U-mode.")
   val SD   = CSRROField     (63, (_, _) => FS === ContextStatus.Dirty || VS === ContextStatus.Dirty).withDescription("Dirty summary bit for the floating-point or vector context.")
@@ -267,7 +268,9 @@ class ScontextBundle extends CSRBundle {
   val ALL = RW(31, 0).withReset(0.U).withDescription("Supervisor trigger context value.")
 }
 
-class SEnvCfg extends EnvCfg
+class SEnvCfg extends EnvCfg {
+  this.LPE.setRW().withReset(0.U)
+}
 
 class SipToMip extends IpValidBundle {
   this.SSIP.bits.setRW()

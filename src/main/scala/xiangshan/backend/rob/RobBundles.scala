@@ -101,6 +101,9 @@ object RobBundles extends HasCircularQueuePtrHelper {
     val debug_v0Wen      = OptionWrapper(backendParams.debugEn, Bool() )
     val debug_commitType = OptionWrapper(backendParams.debugEn, CommitType() )
     // debug_end
+    // Zicfilp
+    val ZicfilpJalr = OptionWrapper(HasZicfilp, Bool())
+    val ZicfilpLPAD = OptionWrapper(HasZicfilp, Bool())
     // topdown
     val topdownIssued    = OptionWrapper(backendParams.debugEn, Bool())
     val topdownCanceled  = OptionWrapper(backendParams.debugEn, Bool())
@@ -151,6 +154,9 @@ object RobBundles extends HasCircularQueuePtrHelper {
     // debug_end
     val dirtyFs = Bool()
     val dirtyVs = Bool()
+    // Zicfilp
+    val ZicfilpJalr = OptionWrapper(HasZicfilp, Bool())
+    val ZicfilpLPAD = OptionWrapper(HasZicfilp, Bool())
   }
 
   def connectEnq(robEntry: RobEntryBundle, robEnq: EnqRobUop): Unit = {
@@ -204,6 +210,13 @@ object RobBundles extends HasCircularQueuePtrHelper {
     robEntry.topdownCancelSource.foreach(_ := IQCancelSource.none)
     robEntry.topdownCancelTimeVec.foreach(_.foreach(_ := 0.U))
     robEntry.topdownCancelTimeFixVec.foreach(_.foreach(_ := 0.U))
+    // Zicfilp
+    robEntry.ZicfilpJalr.zip(robEnq.ZicfilpInfos).foreach { case (sink, source) =>
+      sink := source.ZicfilpJalr
+    }
+    robEntry.ZicfilpLPAD.zip(robEnq.ZicfilpLPAD).foreach { case (sink, source) =>
+      sink := source
+    }
   }
 
   def connectCommitEntry(robCommitEntry: RobCommitEntryBundle, robEntry: RobEntryBundle): Unit = {
@@ -232,6 +245,13 @@ object RobBundles extends HasCircularQueuePtrHelper {
     robCommitEntry.traceBlockInPipe := robEntry.traceBlockInPipe
     robCommitEntry.debug_pc.foreach(_ := robEntry.debug_pc.get)
     robCommitEntry.debug_instr.foreach(_ := robEntry.debug_instr.get)
+    // Zicfilp
+    robCommitEntry.ZicfilpJalr.zip(robEntry.ZicfilpJalr).foreach { case (sink, source) =>
+      sink := source
+    }
+    robCommitEntry.ZicfilpLPAD.zip(robEntry.ZicfilpLPAD).foreach { case (sink, source) =>
+      sink := source
+    }
     robCommitEntry.basicDebug.foreach(_ := robEntry.basicDebug.get)
     robCommitEntry.debug_fuType.foreach(_ := robEntry.debug_fuType.get)
     robCommitEntry.debug_fusionNum.foreach(_ := robEntry.debug_fusionNum.get)

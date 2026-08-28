@@ -116,6 +116,8 @@ class CtrlBlockImp(
   private def hasRen: Boolean = true
   private val pcMem = Module(new SyncDataModuleTemplate(GuardedPc(), FtqSize, numPcMemRead, 1, "BackendPC", hasRen = hasRen))
   private val rob = wrapper.rob.module
+  // Zicfilp
+  private val archZicfilp = Option.when(HasZicfilp)(Module(new ArchZicfilp))
   private val memCtrl = Module(new MemCtrl(params))
 
   private val disableFusion = decode.io.csrCtrl.singlestep || !decode.io.csrCtrl.fusion_enable
@@ -124,6 +126,10 @@ class CtrlBlockImp(
   private val s1_robFlushRedirect = Wire(Valid(new Redirect))
   s1_robFlushRedirect.valid := GatedValidRegNext(s0_robFlushRedirect.valid, false.B)
   s1_robFlushRedirect.bits := RegEnable(s0_robFlushRedirect.bits, s0_robFlushRedirect.valid)
+  // ROB flushes never establish an expected landing pad.
+  s1_robFlushRedirect.bits.ZicfilpJalr.foreach(_ := false.B)
+  s1_robFlushRedirect.bits.ZicfilpXRetValid.foreach(_ := false.B)
+  s1_robFlushRedirect.bits.ZicfilpRetELP.foreach(_ := false.B)
 
   pcMem.io.ren.get(pcMemRdIndexes("robFlush").head) := s0_robFlushRedirect.valid
   pcMem.io.raddr(pcMemRdIndexes("robFlush").head) := s0_robFlushRedirect.bits.ftqIdx.value
@@ -160,8 +166,8 @@ class CtrlBlockImp(
     x.valid := GatedValidRegNext(io.fromWB.wbData(i).valid)
     x.bits := delayedNotFlushedWriteBack(i).bits
   }
-  val delayedNotFlushedWriteBackNeedFlush = Wire(Vec(params.allExuParams.filter(_.needExceptionGen).length, Bool()))
-  delayedNotFlushedWriteBackNeedFlush := delayedNotFlushedWriteBack.filter(_.bits.params.needExceptionGen).map{ x =>
+  val delayedNotFlushedWriteBackNeedFlush = Wire(Vec(params.allExuParams.filter(_.needExceptionGen(HasZicfilp)).length, Bool()))
+  delayedNotFlushedWriteBackNeedFlush := delayedNotFlushedWriteBack.filter(_.bits.params.needExceptionGen(HasZicfilp)).map{ x =>
     x.bits.exceptionVec.orR || x.bits.flushPipe.getOrElse(false.B) || x.bits.replay.getOrElse(false.B) ||
       (if (x.bits.trigger.nonEmpty) TriggerAction.isDmode(x.bits.trigger.get) else false.B)
   }
@@ -226,6 +232,10 @@ class CtrlBlockImp(
   loadReplay.bits := RegEnable(memViolation.bits, memViolation.valid)
   loadReplay.bits.debugIsCtrl := false.B
   loadReplay.bits.debugIsMemVio := true.B
+  // Load replay does not establish an expected landing pad.
+  loadReplay.bits.ZicfilpJalr.foreach(_ := false.B)
+  loadReplay.bits.ZicfilpXRetValid.foreach(_ := false.B)
+  loadReplay.bits.ZicfilpRetELP.foreach(_ := false.B)
 
   pcMem.io.ren.get(pcMemRdIndexes("redirect").head) := memViolation.valid
   pcMem.io.raddr(pcMemRdIndexes("redirect").head) := memViolation.bits.ftqIdx.value
@@ -456,6 +466,15 @@ class CtrlBlockImp(
   decode.io.fromRob.isResumeVType := rob.io.toDecode.isResumeVType
   decode.io.redirect.valid := s1_s3_redirect.valid || s2_s4_pendingRedirectValid
   decode.io.redirect.bits := Mux(s1_s3_redirect.valid, s1_s3_redirect.bits, s2_s4_redirect.bits)
+  // Zicfilp redirect state follows the redirect selected for Decode.
+  decode.io.ZicfilpRedirect.foreach { zicfilpRedirect =>
+    zicfilpRedirect.valid := decode.io.redirect.valid
+    zicfilpRedirect.bits := Mux(
+      decode.io.redirect.bits.ZicfilpXRetValid.get,
+      decode.io.redirect.bits.ZicfilpRetELP.get,
+      decode.io.redirect.bits.ZicfilpJalr.get && io.fromCSR.toDecode.enableZicfilp.get,
+    )
+  }
 
   io.frontend.toIBuf.resumingVType := rob.io.toDecode.isResumeVType
   io.frontend.toIBuf.walkToArchVType := rob.io.toDecode.walkToArchVType
@@ -874,6 +893,21 @@ class CtrlBlockImp(
 
   io.toCSR.trapInstInfo := decode.io.toCSR.trapInstInfo
 
+  // Zicfilp architectural ELP is updated by commit, trap, and legal xRET.
+  archZicfilp.foreach { arch =>
+    arch.io.isCommit := rob.io.commits.isCommit
+    arch.io.enable := io.fromCSR.toDecode.enableZicfilp.get
+    arch.io.trap := rob.io.exception.valid
+    arch.io.xret.valid := s1_s3_redirect.valid && s1_s3_redirect.bits.ZicfilpXRetValid.get
+    arch.io.xret.bits := s1_s3_redirect.bits.ZicfilpRetELP.get
+    for (i <- 0 until CommitWidth) {
+      arch.io.commitValid(i) := rob.io.commits.commitValid(i)
+      arch.io.commitJalr(i) := rob.io.commits.info(i).ZicfilpJalr.get
+      arch.io.commitLPAD(i) := rob.io.commits.info(i).ZicfilpLPAD.get
+    }
+    io.toCSR.ZicfilpELP.get := arch.io.archELP
+  }
+
   io.toVecExcpMod.logicPhyRegMap := rob.io.toVecExcpMod.logicPhyRegMap
   io.toVecExcpMod.excpInfo       := rob.io.toVecExcpMod.excpInfo
   io.toVecExcpMod.ratOldPest := rename.io.ratOldPdest
@@ -960,6 +994,8 @@ class CtrlBlockIO()(implicit p: Parameters, params: BackendParams) extends XSBun
   }
   val toCSR = new Bundle {
     val trapInstInfo = Output(ValidIO(new TrapInstInfo))
+    // Zicfilp
+    val ZicfilpELP = OptionWrapper(HasZicfilp, Output(Bool()))
   }
   val fromWB = new Bundle {
     val wbData = Flipped(MixedVec(params.genWrite2RobBundles))

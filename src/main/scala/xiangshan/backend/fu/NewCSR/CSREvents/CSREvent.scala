@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import utility.{SignExt, ZeroExt}
+import utils.OptionWrapper
 import xiangshan.HasXSParameter
 import xiangshan.backend.fu.NewCSR.CSRBundles.{CauseBundle, PrivState}
 import xiangshan.backend.fu.NewCSR.CSRConfig._
@@ -128,6 +129,9 @@ class TrapEntryEventInput(implicit val p: Parameters) extends Bundle with HasXSP
   val isFetchBkpt = Input(Bool())
   val trapIsForVSnonLeafPTE = Input(Bool())
   val hasDTExcp = Input(Bool())
+
+  // Zicfilp
+  val ZicfilpELP = OptionWrapper(HasZicfilp, Input(Bool()))
   val satpFlushFirstFetchFault = Input(Bool())
 
   // always current privilege

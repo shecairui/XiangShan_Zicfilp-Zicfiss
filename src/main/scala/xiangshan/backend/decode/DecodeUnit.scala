@@ -1149,6 +1149,21 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
   decodedInst.fpu.wflags := decodedInst.wfflags
   decodedInst.fpu.rm := inst.RM
 
+  // Zicfilp
+  if (HasZicfilp) {
+    decodedInst.ZicfilpInfos.get.ZicfilpJalr :=
+      inst.OPCODE === "b1100111".U &&
+      inst.FUNCT3 === 0.U &&
+      inst.RS1 =/= 1.U &&
+      inst.RS1 =/= 5.U &&
+      inst.RS1 =/= 7.U
+    decodedInst.ZicfilpLPAD.get :=
+      inst.OPCODE === "b0010111".U &&
+      inst.RD === 0.U &&
+      ctrl_flow.ZicfilpPCAligned.get
+    decodedInst.ZicfilpInfos.get.ZicfilpLPADValid := false.B
+  }
+
   val uopInfoGen = Module(new UopInfoGen)
   uopInfoGen.io.in.preInfo.isVecArith := inst.isVecArith
   uopInfoGen.io.in.preInfo.isVecMem := inst.isVecStore || inst.isVecLoad

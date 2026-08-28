@@ -354,6 +354,7 @@ class DcsrBundle extends CSRBundle {
   val DEBUGVER  = DcsrDebugVer(31, 28).withReset(DcsrDebugVer.Spec).withDescription("Debug specification version implemented by this hart.")
   val EXTCAUSE  =           RO(26, 24).withReset(0.U).withDescription("Additional cause detail for debug entry.")
   val CETRIG    =           RW(    19).withReset(0.U).withDescription("Trigger re-entry control for critical-error debug entry.")
+  val PELP      =           RW(    18).withReset(0.U).withDescription("Saved landing-pad state for debug trap handling.")
   val EBREAKVS  =           RW(    17).withReset(0.U).withDescription("Enter Debug Mode on VS-mode EBREAK.")
   val EBREAKVU  =           RW(    16).withReset(0.U).withDescription("Enter Debug Mode on VU-mode EBREAK.")
   val EBREAKM   =           RW(    15).withReset(0.U).withDescription("Enter Debug Mode on M-mode EBREAK.")

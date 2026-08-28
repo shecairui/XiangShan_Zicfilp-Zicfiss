@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import utility._
+import utils.OptionWrapper
 import xiangshan._
 import xiangshan.backend.fu.NewCSR._
 import xiangshan.backend.fu.util._
@@ -117,6 +118,10 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
       in.bits.sret := isSret
       in.bits.dret := isDret
       in.bits.redirectFlush := redirectFlush
+  }
+  // Zicfilp
+  csrMod.io.ZicfilpELP.zip(io.csrin.get.ZicfilpELP).foreach { case (sink, source) =>
+    sink := source
   }
   csrMod.io.trapInst := trapInstMod.io.currentTrapInst
   csrMod.io.fetchMalTval := trapTvalMod.io.tval
@@ -319,6 +324,7 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
   io.outValidAhead3Cycle.get := csrModOutValid
   val isXRetReg = RegEnable(isXRet, false.B, io.in.fire)
   io.out.valid := Mux(isXRetReg, csrModOutValid, DelayN(csrModOutValid, 3))
+  val legalXRetOut = io.out.valid && isXRetReg && !csrModOut.EX_II && !csrModOut.EX_VI
   io.out.bits.ctrl.exceptionVec := ExceptSparseVec.mux2(
     isXRetReg,
     exceptionVec,
@@ -346,6 +352,11 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
   redirect.backendIGPF := csrMod.io.xretTargetPc.bits.raiseIGPF
   // Only mispred will send redirect to frontend
   redirect.isMisPred := false.B
+  // Zicfilp
+  redirect.ZicfilpXRetValid.foreach(_ := legalXRetOut)
+  redirect.ZicfilpRetELP.zip(csrModOut.retELP).foreach { case (sink, source) =>
+    sink := source
+  }
 
   val rfWenReg = RegEnable(io.in.bits.ctrl.rfWen.get, io.in.fire)
   val pdestReg = RegEnable(io.in.bits.ctrl.pdest, io.in.fire)
@@ -439,9 +450,14 @@ class CSRInput(implicit p: Parameters) extends XSBundle with HasSoCParameter {
   val fromVecExcpMod = Input(new Bundle {
     val busy = Bool()
   })
+  // Zicfilp
+  val ZicfilpELP = OptionWrapper(HasZicfilp, Input(Bool()))
 }
 
 class CSRToDecode(implicit p: Parameters) extends XSBundle {
+  // Zicfilp
+  val enableZicfilp = OptionWrapper(HasZicfilp, Bool())
+
   val illegalInst = new Bundle {
 
     val mfence = Option.when(HasMptCheck) (Bool())

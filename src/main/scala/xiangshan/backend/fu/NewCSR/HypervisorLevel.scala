@@ -366,6 +366,7 @@ class HEnvCfg extends EnvCfg {
     this.STCE.setRW().withReset(1.U)
   }
   this.PBMTE.setRW().withReset(0.U)
+  this.LPE.setRW().withReset(0.U)
   if (CSRConfig.EXT_DBLTRP) {
     // software write envcfg to open ssdbltrp if need
     // set 0 to pass ci
